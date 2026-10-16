@@ -4,8 +4,9 @@ import sys
 from pathlib import Path
 
 # ===== 설정 =====
-SRC = Path(r"D:\01.업무데이터\A07.2026년 Project\20.역삼동 678-11 업무시설_26.10.15~")
-WORK = Path(r"D:\_CAD2015")               # 경로 길이 절약을 위해 짧은 경로 사용
+# 대상 폴더: 폴더를 .bat 위로 끌어놓거나, 인자로 지정. 미지정 시 이 스크립트가 있는 폴더.
+SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent
+WORK = Path(SRC.anchor) / "_CAD2015"      # 드라이브 최상위의 짧은 작업 경로(경로 길이 절약)
 OUT_VERSION = "ACAD2013"                  # AutoCAD 2013~2017 공용 포맷 (2015에서 열림)
 BACKUP = True                             # True: 덮어쓰기 전 원본을 WORK\\backup 에 보관 (용량 부담 시 False)
 OK_HEADERS = {b"AC1027", b"AC1024", b"AC1021", b"AC1018", b"AC1015",
@@ -27,6 +28,7 @@ def find_oda() -> Path:
 def main():
     if not SRC.exists():
         sys.exit(f"원본 폴더 없음: {SRC}")
+    print(f"대상 폴더: {SRC}")
     tmp_in, out = WORK / "in", WORK / "out"
     tmp_in.mkdir(parents=True, exist_ok=True)
     out.mkdir(parents=True, exist_ok=True)
@@ -50,6 +52,8 @@ def main():
         print(f"  복사 [{h.decode(errors='replace')}] {rel}")
     if not targets:
         return
+    if input("위 파일을 원본 위치에 덮어씁니다. 진행하려면 Y 입력: ").strip().lower() != "y":
+        sys.exit("취소됨")
 
     r = subprocess.run([str(find_oda()), str(tmp_in), str(out),
                         OUT_VERSION, "DWG", "1", "1", "*.DWG"])
