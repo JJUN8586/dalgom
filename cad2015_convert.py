@@ -7,6 +7,7 @@ from pathlib import Path
 SRC = Path(r"D:\01.업무데이터\A07.2026년 Project\20.역삼동 678-11 업무시설_26.10.15~")
 WORK = Path(r"D:\_CAD2015")               # 경로 길이 절약을 위해 짧은 경로 사용
 OUT_VERSION = "ACAD2013"                  # AutoCAD 2013~2017 공용 포맷 (2015에서 열림)
+BACKUP = True                             # True: 덮어쓰기 전 원본을 WORK\\backup 에 보관 (용량 부담 시 False)
 OK_HEADERS = {b"AC1027", b"AC1024", b"AC1021", b"AC1018", b"AC1015",
               b"AC1014", b"AC1012", b"AC1009"}   # 2013 이하: 2015에서 이미 열림
 # ================
@@ -53,7 +54,24 @@ def main():
     r = subprocess.run([str(find_oda()), str(tmp_in), str(out),
                         OUT_VERSION, "DWG", "1", "1", "*.DWG"])
     done = len([x for x in out.rglob("*") if x.suffix.lower() == ".dwg"])
-    print(f"완료: {done}/{len(targets)}개 (returncode={r.returncode}) → {out}")
+    print(f"변환 완료: {done}/{len(targets)}개 (returncode={r.returncode})")
+
+    # 변환 성공 파일만 원본 위치에 덮어쓰기
+    ok = fail = 0
+    for p, _ in targets:
+        rel = p.relative_to(SRC)
+        conv = out / rel
+        if not conv.exists() or header(conv) != b"AC1027":
+            print(f"  [실패-원본유지] {rel}")
+            fail += 1
+            continue
+        if BACKUP:
+            bak = WORK / "backup" / rel
+            bak.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(p, bak)
+        shutil.copy2(conv, p)
+        ok += 1
+    print(f"덮어쓰기: 성공 {ok}개 / 실패(원본 유지) {fail}개")
 
 if __name__ == "__main__":
     main()
