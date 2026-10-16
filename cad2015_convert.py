@@ -78,5 +78,11 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except SystemExit as e:
+        print(e)
+    except Exception:
+        import traceback
+        traceback.print_exc()
     finally:
         shutil.rmtree(WORK, ignore_errors=True)   # 임시 폴더 정리
+        input("\n종료하려면 Enter를 누르세요...")  # 더블클릭 시 창이 바로 닫히지 않도록
