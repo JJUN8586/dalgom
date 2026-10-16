@@ -6,9 +6,9 @@ from pathlib import Path
 # ===== 설정 =====
 # 대상 폴더: 폴더를 .bat 위로 끌어놓거나, 인자로 지정. 미지정 시 이 스크립트가 있는 폴더.
 SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent
-WORK = Path(SRC.anchor) / "_CAD2015"      # 드라이브 최상위의 짧은 작업 경로(경로 길이 절약)
+WORK = Path(SRC.anchor) / "_CAD2015_tmp"  # 임시 작업 폴더(끝나면 자동 삭제)
 OUT_VERSION = "ACAD2013"                  # AutoCAD 2013~2017 공용 포맷 (2015에서 열림)
-BACKUP = True                             # True: 덮어쓰기 전 원본을 WORK\\backup 에 보관 (용량 부담 시 False)
+BACKUP = False                            # True: 덮어쓰기 전 원본을 SRC\\_백업_변환전 에 보관
 OK_HEADERS = {b"AC1027", b"AC1024", b"AC1021", b"AC1018", b"AC1015",
               b"AC1014", b"AC1012", b"AC1009"}   # 2013 이하: 2015에서 이미 열림
 # ================
@@ -35,7 +35,7 @@ def main():
 
     targets, skipped = [], 0
     for p in SRC.rglob("*"):
-        if p.suffix.lower() != ".dwg" or WORK in p.parents:
+        if p.suffix.lower() != ".dwg" or "_백업_변환전" in p.parts:
             continue
         h = header(p)
         if h in OK_HEADERS:
@@ -52,8 +52,6 @@ def main():
         print(f"  복사 [{h.decode(errors='replace')}] {rel}")
     if not targets:
         return
-    if input("위 파일을 원본 위치에 덮어씁니다. 진행하려면 Y 입력: ").strip().lower() != "y":
-        sys.exit("취소됨")
 
     r = subprocess.run([str(find_oda()), str(tmp_in), str(out),
                         OUT_VERSION, "DWG", "1", "1", "*.DWG"])
@@ -70,7 +68,7 @@ def main():
             fail += 1
             continue
         if BACKUP:
-            bak = WORK / "backup" / rel
+            bak = SRC / "_백업_변환전" / rel
             bak.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(p, bak)
         shutil.copy2(conv, p)
@@ -78,4 +76,7 @@ def main():
     print(f"덮어쓰기: 성공 {ok}개 / 실패(원본 유지) {fail}개")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        shutil.rmtree(WORK, ignore_errors=True)   # 임시 폴더 정리
